@@ -10,9 +10,21 @@ urlpatterns = patterns('',
 
     url(r'^$', 'api.views.home'),
     url(r'^admin/', include(admin.site.urls)),
+    url(r'^users/$', 'api.views.user_create'),
+    url(r'^profile/$', 'api.views.user'),
+	    
+
+
+
+
+
+
+
+
+
+
     url(r'^projects/$', 'api.views.project_create'),
     url(r'^(?P<slug>\w+)/$', 'api.views.project'),
     url(r'^(?P<slug>\w+)/locations/$', 'api.views.location_index_create'),
     url(r'^(?P<slug>\w+)/(?P<snail>\w+)/$', 'api.views.location'),
-    #url(r'^users/$', 'api.views.user_create'),
 )

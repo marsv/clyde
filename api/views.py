@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from api.helpers import unique_slugify
 from api.models import Project
 from api.models import Location
-
+from django.contrib.auth import authenticate
 
 def home(request):
 	return render(request, 'index.html')
@@ -36,12 +36,10 @@ def project(request, slug):
 
 	if request.method == 'GET':
 		data = json.dumps({'name':project.name, 'description':project.description})
-		response.status_code = 200
 		response.content = data
 		
 	elif request.method == r'DELETE':
 		project.delete()
-		response.status_code = 200
 
 	elif request.method == 'POST':
 		value = request.POST.get('description',None)
@@ -53,7 +51,6 @@ def project(request, slug):
 		value = request.POST.get('img', None)
 		if value != None:
 			project.img = value
-		response.status_code = 200
 		project.save()
 		unique_slugify(project, project.name) 
 	
@@ -85,7 +82,6 @@ def location_index_create(request, slug):
 	elif request.method == 'GET':
 		locations = Location.objects.filter(project=project)
 		data = json.dumps([{'title':l.title, 'description':l.description, 'lat':l.lat, 'lng':l.lng} for l in locations])
-		response.status_code = 200
 		response.content = data
 
 	return response
@@ -100,12 +96,10 @@ def location(request, slug, snail):
 
 	if request.method == 'GET':
 		data = json.dumps({'title':location.title, 'description':location.description, 'lat':location.lat, 'lng':location.lng})
-		response.status_code = 200
 		response.content = data
 		
 	elif request.method == r'DELETE':
 		location.delete()
-		response.status_code = 200
 
 	elif request.method == 'POST':
 		value = request.POST.get('description',None)
@@ -121,21 +115,61 @@ def location(request, slug, snail):
 		if value != None:
 			location.title = value
 
-		response.status_code = 200
 		unique_slugify(location, location.title) 
 		location.save()
 	
 	return response
 
 
-# def user_create(request):
-# 	if request.method == 'POST':
-# 		response = HttpResponse("", content_type='application/json; charset=utf-8')
-# 		username = request.POST.get('username','')
-# 		email = request.POST.get('email','')
-# 		password = request.POST.get('password','')
-# 		if User.create(namename=username, email=email, password=password) != None:
-# 			response.status_code = 201
-# 		else:
-# 			response.status_code = 400
-# 		return response
+def user_create(request):
+	response = HttpResponse("", content_type='application/json; charset=utf-8')
+	if request.method == 'POST':
+		username = request.POST.get('username','')
+		email = request.POST.get('email','')
+		password = request.POST.get('password','')
+		# if username == None or email == None or password == None:
+		# 	response.status_code = 400
+		# 	return response
+
+		try: 
+			User.objects.create_user(username=username, email=email, password=password)
+		except:
+			response.status_code = 400
+			return response
+		response.status_code = 201
+		return response
+
+def user(request):
+	response = HttpResponse("", content_type='application/json; charset=utf-8')
+	username = request.GET.get('username','')
+	user = User.objects.get(username=username)
+	
+	# if authenticate_user(username, password) == False:
+	# 	response.status_code = 401
+	# 	return response
+
+	if request.method == r'DELETE':
+		user.delete()
+	elif request.method == 'POST':
+		password = request.POST.get('password')
+		user.set_password(password)
+		user.full_clean()
+		user.save()
+	elif request.method == 'GET':
+		data = json.dumps({'email':user.email})
+		response.content = data
+	return response
+
+def authenticate_user(username, password):
+	user = authenticate(username=username, password=password)
+	if user is not None:
+		# the password verified for the user
+		if user.is_active:
+			print("User is valid, active and authenticated")
+		else:
+			print("The password is valid, but the account has been disabled!")
+		return True
+	else:
+		# the authentication system was unable to verify the username and password
+		print("The username and password were incorrect.")
+		return False

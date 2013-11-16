@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.test import Client
+from django.contrib.auth.models import User
 from api.models import Project, Location
+from django.contrib.auth import authenticate
 
 
 class ProjectTestCase(TestCase):
@@ -99,16 +101,42 @@ class StaticPagesTestCase(TestCase):
 
 
 
-# class UserTestCase(TestCase):
-# 	def setUp(self):
-# 		self.client = Client()
+class UserTestCase(TestCase):
+	def setUp(self):
+		self.client = Client()
 
-# 	def test_create_user(self):
-# 		response = self.client.post('/users/', {'username':'john', 'password':'tomaten', 'email':'john@example.com'})
-# 		self.assertEqual(response.status_code, 201)
-# 		user = User.objects.get(username='john')
-# 		self.assertEqual(user.email, 'john@example.com')
-# 		self.assertEqual(user.check_password('tomaten'), True)
+	def test_create_user(self):
+		response = self.client.post('/users/', {'username':'john', 'password':'tomaten', 'email':'john@example.com'})
+		self.assertEqual(response.status_code, 201)
+		user = User.objects.get(username='john')
+		self.assertEqual(user.email, 'john@example.com')
+		self.assertEqual(user.check_password('tomaten'), True)
+
+	def test_create_invalid_user(self):
+		response = self.client.post('/users/', {'username':'', 'password':'tomaten', 'email':'john@example.com'})
+		self.assertEqual(response.status_code, 400)
+
+	def test_delete_user(self):
+		user = User.objects.create_user(username='hans', password='yoyoyo')
+		response = self.client.delete('/profile/?username=hans')
+		self.assertEqual(response.status_code, 200)
+		user = User.objects.filter(username='hans')
+		self.assertEqual(len(user), 0)
+
+	def test_update_user(self):
+		user = User.objects.create_user(username='hans', password='yoyoyo')
+		response = self.client.post('/profile/?username=hans', {'password':'nonono'})
+		self.assertEqual(response.status_code, 200)
+		user = User.objects.get(username='hans')
+		self.assertEqual(user.check_password('nonono'), True)
+
+	def test_get_user(self):
+		user = User.objects.create_user(username='hans', password='yoyoyo', email='hans@example.com')
+		response = self.client.get('/profile/?username=hans')
+		self.assertEqual(response.status_code, 200)
+		data = response.content.decode('utf-8')
+		self.assertJSONEqual(data, {'email':'hans@example.com'})
+
 
 
 
