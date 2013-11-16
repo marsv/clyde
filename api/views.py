@@ -14,7 +14,7 @@ def home(request):
 
 def project_create(request):
 	if request.method == 'POST':
-		response = HttpResponse()
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
 		name = request.POST.get('name','')
 		description = request.POST.get('description','')
 		url = request.POST.get('url','')
@@ -27,7 +27,7 @@ def project_create(request):
 
 
 def project(request, slug):
-	response = HttpResponse()
+	response = HttpResponse("", content_type='application/json; charset=utf-8')
 	project = Project.objects.get(slug=slug)
 	if project == None:
 		response.status_code = 404
@@ -38,9 +38,9 @@ def project(request, slug):
 		response.status_code = 200
 		response.content = data
 		
-	elif request.method == 'DELETE':
+	elif request.method == r'DELETE':
 		project.delete()
-		response.status_code = 201
+		response.status_code = 200
 
 	elif request.method == 'POST':
 		value = request.POST.get('description',None)
@@ -52,7 +52,7 @@ def project(request, slug):
 		value = request.POST.get('img', None)
 		if value != None:
 			project.img = value
-		response.status_code = 201
+		response.status_code = 200
 		project.save()
 		unique_slugify(project, project.name) 
 	
@@ -61,7 +61,7 @@ def project(request, slug):
 
 
 def location_index_create(request, slug):
-	response = HttpResponse()
+	response = HttpResponse("", content_type='application/json; charset=utf-8')
 	project = Project.objects.get(slug=slug)
 	if project == None:
 		response.status_code = 404
@@ -74,23 +74,21 @@ def location_index_create(request, slug):
 		description = request.POST.get('description','')
 		title = request.POST.get('title','')
 		img = request.POST.get('img', '')
-		Location.create(title, description, lat, lng, img, project)
+		Location.create(project, title, description, lat, lng, img)
 		response.status_code = 201
 		
 	elif request.method == 'GET':
 		locations = Location.objects.filter(project=project)
-		data = json.dumps([{'title':l.title, 'description':l.description} for l in locations])
+		data = json.dumps([{'title':l.title, 'description':l.description, 'lat':l.lat, 'lng':l.lng} for l in locations])
 		response.status_code = 200
 		response.content = data
 
 	return response
 
 def location(request, slug, snail):
-	response = HttpResponse()
+	response = HttpResponse("", content_type='application/json; charset=utf-8')
 	project = Project.objects.get(slug=slug)
-	print(project.name)
 	location = Location.objects.get(slug=snail, project=project)
-	print(location)
 	if project == None or location == None:
 		response.status_code = 404
 		return response
@@ -100,9 +98,9 @@ def location(request, slug, snail):
 		response.status_code = 200
 		response.content = data
 		
-	elif request.method == 'DELETE':
+	elif request.method == r'DELETE':
 		location.delete()
-		response.status_code = 201
+		response.status_code = 200
 
 	elif request.method == 'POST':
 		value = request.POST.get('description',None)
@@ -118,7 +116,7 @@ def location(request, slug, snail):
 		if value != None:
 			location.title = value
 
-		response.status_code = 201
+		response.status_code = 200
 		unique_slugify(location, location.title) 
 		location.save()
 	

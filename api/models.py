@@ -18,7 +18,7 @@ class Project(models.Model):
 		return self.name
 
 	@classmethod
-	def create(self, name, description, url, img):
+	def create(self, name, description='', url='', img=''):
 		project = Project(name=name, description=description, url=url)
 		unique_slugify(project, name)
 		project.save()
@@ -38,7 +38,7 @@ class Location(models.Model):
 		return self.title
 
 	@classmethod
-	def create(self, title, description, lat, lng, img, project):
+	def create(self, project, title, description='', lat=0.0, lng=0.0, img=''):
 		location = Location(title=title, description=description, lat=lat, lng=lng, project=project)
 		unique_slugify(location, title)
 		location.save()
