@@ -4,6 +4,7 @@ from django.shortcuts import render_to_response
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers
+from django.contrib.auth.models import User
 from api.helpers import unique_slugify
 from api.models import Project
 from api.models import Location
@@ -69,13 +70,17 @@ def location_index_create(request, slug):
 
 	if request.method == 'POST':
 		response = HttpResponse()
-		lat = request.POST.get('lat', '0.0')
-		lng = request.POST.get('lng', '0.0')
+		lat = request.POST.get('lat', None)
+		lng = request.POST.get('lng', None)
 		description = request.POST.get('description','')
 		title = request.POST.get('title','')
 		img = request.POST.get('img', '')
-		Location.create(project, title, description, lat, lng, img)
-		response.status_code = 201
+		check = Location.create(project=project, title=title, description=description, lat=lat, lng=lng, img=img)
+		if check == True:
+			response.status_code = 201
+		else:
+			response.status_code = 400
+			response.content = json.dumps(check.message_dict)
 		
 	elif request.method == 'GET':
 		locations = Location.objects.filter(project=project)
@@ -123,4 +128,14 @@ def location(request, slug, snail):
 	return response
 
 
-
+# def user_create(request):
+# 	if request.method == 'POST':
+# 		response = HttpResponse("", content_type='application/json; charset=utf-8')
+# 		username = request.POST.get('username','')
+# 		email = request.POST.get('email','')
+# 		password = request.POST.get('password','')
+# 		if User.create(namename=username, email=email, password=password) != None:
+# 			response.status_code = 201
+# 		else:
+# 			response.status_code = 400
+# 		return response

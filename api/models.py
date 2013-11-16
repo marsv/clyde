@@ -1,5 +1,6 @@
 from django.db import models
 from api.helpers import unique_slugify
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -28,9 +29,9 @@ class Project(models.Model):
 class Location(models.Model):
 	title = models.CharField(max_length=200)
 	slug = models.SlugField()
-	description = models.TextField(default='')
-	lat = models.FloatField(default=0.0, db_index=True)
-	lng = models.FloatField(default=0.0, db_index=True)
+	description = models.TextField(default='', blank=True)
+	lat = models.FloatField(db_index=True)
+	lng = models.FloatField(db_index=True)
 	images = models.ManyToManyField(Image, blank=True, null=True)
 	project = models.ForeignKey(Project)
 
@@ -38,11 +39,15 @@ class Location(models.Model):
 		return self.title
 
 	@classmethod
-	def create(self, project, title, description='', lat=0.0, lng=0.0, img=''):
+	def create(self, project, title, lat, lng, description='', img=''):
 		location = Location(title=title, description=description, lat=lat, lng=lng, project=project)
 		unique_slugify(location, title)
+		try:
+			location.full_clean()
+		except ValidationError as e:
+			return e
 		location.save()
-		return location
+		return True
 
 
 

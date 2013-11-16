@@ -43,7 +43,7 @@ class LocationTestCase(TestCase):
 
 	def test_create_location(self):
 		Project.create(name='tomate', description='tomatensalat', url='hallo')
-		response = self.client.post('/tomate/locations/', {'title':'funfunfun', 'description':'nochmehrfun'})
+		response = self.client.post('/tomate/locations/', {'title':'funfunfun', 'description':'nochmehrfun', 'lat':'0.0', 'lng':'0.0'})
 		self.assertEqual(response.status_code, 201)
 		location = Location.objects.get(title='funfunfun')
 		self.assertEqual(location.title, 'funfunfun')
@@ -51,7 +51,7 @@ class LocationTestCase(TestCase):
 
 	def test_get_location(self):
 		project = Project.create(name='tomate', description='tomatensalat', url='hallo')
-		Location.create(title='funfunfun', description='nochmehrfun', project=project)
+		Location.create(title='funfunfun', lat=0.0, lng=0.0, description='nochmehrfun', project=project)
 		response = self.client.get('/tomate/funfunfun/')
 		self.assertEqual(response.status_code, 200)
 		data = response.content.decode('utf-8')
@@ -59,7 +59,7 @@ class LocationTestCase(TestCase):
 
 	def test_update_location(self):
 		project = Project.create(name='tomate', description='tomatensalat', url='hallo')
-		Location.create(title='funfunfun', description='nochmehrfun', project=project)
+		Location.create(title='funfunfun', lat=0.0, lng=0.0, description='nochmehrfun', project=project)
 		response = self.client.post('/tomate/funfunfun/', {'description':'wenigerfunohhhh'})
 		self.assertEqual(response.status_code, 200)
 		location = Location.objects.get(title='funfunfun')
@@ -67,7 +67,7 @@ class LocationTestCase(TestCase):
 
 	def test_delete_location(self):
 		project = Project.create(name='tomate', description='tomatensalat', url='hallo')
-		Location.create(title='funfunfun', description='nochmehrfun', project=project)
+		Location.create(title='funfunfun', lat=0.0, lng=0.0, description='nochmehrfun', project=project)
 		response = self.client.delete('/tomate/funfunfun/')
 		self.assertEqual(response.status_code, 200)
 		location = Location.objects.filter(title='funfunfun')
@@ -75,16 +75,40 @@ class LocationTestCase(TestCase):
 
 	def test_index_location(self):
 		project = Project.create(name='tomate', description='tomatensalat', url='hallo')
-		Location.create(title='funfunfun', description='nochmehrfun', project=project)
-		Location.create(title='hasshasshass', description='nochmehrfun', project=project)
+		Location.create(title='funfunfun', lat=0.0, lng=0.0, description='nochmehrfun', project=project)
+		Location.create(title='hasshasshass', lat=0.0, lng=0.0, description='nochmehrfun', project=project)
 		response = self.client.get('/tomate/locations/')
 		self.assertEqual(response.status_code, 200)
 		data = response.content.decode('utf-8')
 		self.assertJSONEqual(data, [{'description':'nochmehrfun', 'lat':0.0, 'title':'funfunfun', 'lng':0.0}, {'description':'nochmehrfun', 'lat':0.0, 'title':'hasshasshass', 'lng':0.0}])
 
+	def test_valid_location(self):
+		Project.create(name='tomate', description='tomatensalat', url='hallo')
+		response = self.client.post('/tomate/locations/', {'title':'', 'description':'', 'lat':'', 'lng':''})
+		self.assertEqual(response.status_code, 400)
+		data = response.content.decode('utf-8')
+		self.assertJSONEqual(data, {'title':['This field cannot be blank.'], 'lat':['\'\' value must be a float.'], 'lng':['\'\' value must be a float.']})
+
+class StaticPagesTestCase(TestCase):
+	def setUp(self):
+		self.client = Client()
+
+	def test_get_home(self):
+		response = self.client.get('/')
+		self.assertEqual(response.status_code, 200)
 
 
 
+# class UserTestCase(TestCase):
+# 	def setUp(self):
+# 		self.client = Client()
+
+# 	def test_create_user(self):
+# 		response = self.client.post('/users/', {'username':'john', 'password':'tomaten', 'email':'john@example.com'})
+# 		self.assertEqual(response.status_code, 201)
+# 		user = User.objects.get(username='john')
+# 		self.assertEqual(user.email, 'john@example.com')
+# 		self.assertEqual(user.check_password('tomaten'), True)
 
 
 
