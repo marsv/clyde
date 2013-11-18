@@ -9,12 +9,64 @@ from api.helpers import unique_slugify
 from api.models import Project
 from api.models import Location
 from django.contrib.auth import authenticate
+from oauth2_provider.views.generic import ProtectedResourceView
+from oauth2_provider.oauth2_backends import OAuthLibCore
+from oauth2_provider.decorators import protected_resource
+from oauth2_provider.models import AccessToken
+from django.views.generic import View
+from django.http import HttpResponseForbidden
 
-def home(request):
-	return render(request, 'index.html')
 
-def project_create(request):
-	if request.method == 'POST':
+class Helper():
+	@staticmethod
+	def params(request):
+		return json.loads(request.body.decode('utf-8'))
+
+	@staticmethod
+	def current_user(request):
+		return AccessToken.objects.get(token=request.META['Authorization'].split()[1]).user
+
+class RegistrationView(View):
+
+	def post(self, request):
+		request._set_post(json.loads(request.body.decode('utf-8')))
+
+		params = Helper.params(request)
+		
+		username = params['username']
+		email = params['email']
+		password = params['password']
+		# if username == None or email == None or password == None:
+		# 	response.status_code = 400
+		# 	return response
+		try: 
+			User.objects.create_user(username=username, email=email, password=password)
+		except:
+			response = HttpResponse("", content_type='application/json; charset=utf-8')
+			response.status_code = 400
+			return response
+
+		url, headers, body, status = OAuthLibCore().create_token_response(request=request)
+		response = HttpResponse(content=body, status=status, content_type='application/json; charset=utf-8')
+		for k, v in headers.items():
+			response[k] = v
+		response.status_code = 201
+		
+		return response
+
+class LoginView(View):
+	def post(self, request):
+		request._set_post(json.loads(request.body.decode('utf-8')))
+
+		url, headers, body, status = OAuthLibCore().create_token_response(request=request)
+		response = HttpResponse(content=body, status=status, content_type='application/json; charset=utf-8')
+		for k, v in headers.items():
+			response[k] = v
+		response.status_code = 201
+		return response
+
+class ProjectView(ProtectedResourceView):
+	def post(self, request):
 		response = HttpResponse("", content_type='application/json; charset=utf-8')
 		name = request.POST.get('name','')
 		description = request.POST.get('description','')
@@ -26,47 +78,46 @@ def project_create(request):
 			response.status_code = 400
 		return response
 
-
-def project(request, slug):
-	response = HttpResponse("", content_type='application/json; charset=utf-8')
-	project = Project.objects.get(slug=slug)
-	if project == None:
-		response.status_code = 404
-		return response
-
-	if request.method == 'GET':
+	def get(self, request, slug):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		if project == None:
+			response.status_code = 404
+			return response
 		data = json.dumps({'name':project.name, 'description':project.description})
 		response.content = data
-		
-	elif request.method == r'DELETE':
-		project.delete()
-
-	elif request.method == 'POST':
-		value = request.POST.get('description',None)
-		if value != None:
-			project.description = value 
-		value = request.POST.get('url',None)
-		if value != None:
-			project.url = value 
-		value = request.POST.get('img', None)
-		if value != None:
-			project.img = value
-		project.save()
-		unique_slugify(project, project.name) 
-	
-	return response
-
-
-
-def location_index_create(request, slug):
-	response = HttpResponse("", content_type='application/json; charset=utf-8')
-	project = Project.objects.get(slug=slug)
-	if project == None:
-		response.status_code = 404
 		return response
 
-	if request.method == 'POST':
-		response = HttpResponse()
+	def put(self, request, slug):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		params = Helper.params(request)
+
+		project.description = params['description']
+		try:
+			value = params['url']
+			value = params['img']
+		except:
+			pass
+		
+		project.save()
+		unique_slugify(project, project.name)
+		return response
+
+	def delete(self, request, slug):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		project.delete()
+		return response
+
+class LocationView(ProtectedResourceView):
+	def post(self, request, slug):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		if project == None:
+			response.status_code = 404
+			return response
+
 		lat = request.POST.get('lat', None)
 		lng = request.POST.get('lng', None)
 		description = request.POST.get('description','')
@@ -78,98 +129,131 @@ def location_index_create(request, slug):
 		else:
 			response.status_code = 400
 			response.content = json.dumps(check.message_dict)
-		
-	elif request.method == 'GET':
+		return response
+
+	def get(self, request, slug, snail=None):
+		if snail == None:
+			return self.index(request, slug)
+		else:
+			return self.show(request, slug, snail)
+
+
+	def index(self, request, slug):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		if project == None:
+			response.status_code = 404
+			return response
+
 		locations = Location.objects.filter(project=project)
 		data = json.dumps([{'title':l.title, 'description':l.description, 'lat':l.lat, 'lng':l.lng} for l in locations])
 		response.content = data
 
-	return response
-
-def location(request, slug, snail):
-	response = HttpResponse("", content_type='application/json; charset=utf-8')
-	project = Project.objects.get(slug=slug)
-	location = Location.objects.get(slug=snail, project=project)
-	if project == None or location == None:
-		response.status_code = 404
 		return response
 
-	if request.method == 'GET':
+	def show(self, request, slug, snail):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		location = Location.objects.get(slug=snail, project=project)
+		if project == None:
+			response.status_code = 404
+			return response
+		location = Location.objects.get(slug=snail, project=project)
+
 		data = json.dumps({'title':location.title, 'description':location.description, 'lat':location.lat, 'lng':location.lng})
 		response.content = data
-		
-	elif request.method == r'DELETE':
-		location.delete()
 
-	elif request.method == 'POST':
-		value = request.POST.get('description',None)
-		if value != None:
-			location.description = value 
-		value = request.POST.get('lat',None)
-		if value != None:
-			location.lat = value 
-		value = request.POST.get('lng', None)
-		if value != None:
-			location.lng = value 
-		value = request.POST.get('title', None)
-		if value != None:
-			location.title = value
+		return response
+
+	def put(self, request, slug, snail):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		if project == None:
+			response.status_code = 404
+			return response
+		location = Location.objects.get(slug=snail, project=project)
+		params = Helper.params(request)
+
+		location.description = params['description']
+		try:
+			value = params['lat']
+			value = params['lng']
+			value = params['title']
+		except:
+			pass
 
 		unique_slugify(location, location.title) 
 		location.save()
-	
-	return response
-
-
-def user_create(request):
-	response = HttpResponse("", content_type='application/json; charset=utf-8')
-	if request.method == 'POST':
-		username = request.POST.get('username','')
-		email = request.POST.get('email','')
-		password = request.POST.get('password','')
-		# if username == None or email == None or password == None:
-		# 	response.status_code = 400
-		# 	return response
-
-		try: 
-			User.objects.create_user(username=username, email=email, password=password)
-		except:
-			response.status_code = 400
-			return response
-		response.status_code = 201
 		return response
 
-def user(request):
+	def delete(self, request, slug, snail):
+		response = HttpResponse("", content_type='application/json; charset=utf-8')
+		project = Project.objects.get(slug=slug)
+		if project == None:
+			response.status_code = 404
+			return response
+		location = Location.objects.get(slug=snail, project=project)
+		location.delete()
+		return response
+
+
+
+
+def home(request):
+	return render(request, 'index.html')
+
+
+class UserView(ProtectedResourceView):
 	response = HttpResponse("", content_type='application/json; charset=utf-8')
-	username = request.GET.get('username','')
-	user = User.objects.get(username=username)
-	
-	# if authenticate_user(username, password) == False:
-	# 	response.status_code = 401
-	# 	return response
+	user = None
 
-	if request.method == r'DELETE':
-		user.delete()
-	elif request.method == 'POST':
+	def setRequestEnv(self, request):
+		self.user = User.objects.get(username=request.GET.get('username',''))
+
+	def userAllowed(self, request):
+		if request.method.lower() == 'delete':
+			if self.user!=Helper.current_user(request):
+				return False
+
+		return True 
+
+	def init(self, request):
+		self.setRequestEnv(request)
+		if not self.userAllowed(request): 
+			return HttpResponseForbidden('')
+		return None
+
+	def get(self, request):	
+		init = self.init(request)
+		if init != None: 
+			return init
+			
+
+		data = json.dumps({'email':self.user.email})
+		self.response.content = data
+
+		return self.response
+
+	def post(self, request):
+		init = self.init(request)
+		if init != None:
+			return init
+
 		password = request.POST.get('password')
-		user.set_password(password)
-		user.full_clean()
-		user.save()
-	elif request.method == 'GET':
-		data = json.dumps({'email':user.email})
-		response.content = data
-	return response
+		self.user.set_password(password)
+		self.user.full_clean()
+		self.user.save()
 
-def authenticate_user(username, password):
-	user = authenticate(username=username, password=password)
-	if user is not None:
-		# the password verified for the user
-		if user.is_active:
-			print("User is valid, active and authenticated")
+		return self.response
+
+	def delete(self, request):
+		init = self.init(request)
+		if init != None:
+			return init
+
+		if self.user==Helper.current_user(request):
+			self.user.delete()
 		else:
-			print("The password is valid, but the account has been disabled!")
-		return True
-	else:
-		# the authentication system was unable to verify the username and password
-		print("The username and password were incorrect.")
-		return False
+			self.response.status_code = 403
+
+		return self.response

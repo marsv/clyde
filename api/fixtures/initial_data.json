@@ -1,0 +1,33 @@
+[
+{
+   "pk": 1, 
+   "model": "oauth2_provider.application", 
+   "fields": {
+      "name": "clyde", 
+      "redirect_uris": "http://127.0.0.1:8000/", 
+      "client_id": "a", 
+      "user": 1, 
+      "client_secret": "b", 
+      "client_type": "confidential", 
+      "authorization_grant_type": "password"
+   }
+},
+{
+   "fields": {
+      "is_staff": true, 
+      "last_name": "", 
+      "username": "marius", 
+      "email": "dsflgkj@djfkgh.bla", 
+      "last_login": "2013-11-17T00:05:13.031Z", 
+      "is_superuser": true, 
+      "password": "pbkdf2_sha256$12000$OE4DvO7JRqpk$AUYGrvLjnUHZytGVl5gJWdZoO171hM7oji/6lNHoIYw=", 
+      "is_active": true, 
+      "date_joined": "2013-11-16T04:22:46.025Z", 
+      "user_permissions": [], 
+      "first_name": "", 
+      "groups": []
+   }, 
+   "model": "auth.user", 
+   "pk": 1
+}
+]
